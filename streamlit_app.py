@@ -116,6 +116,37 @@ def _access_token() -> str:
     return resp.json()["access_token"]
 
 
+def log_qr_generated(speaker_name: str, event_name: str, talk_title: str, feedback_url: str) -> None:
+    """Log QR code generation to the 'QR Codes Generated' sheet tab (best-effort, silent on failure)."""
+    import requests
+    try:
+        sid = st.secrets.get("GOOGLE_SPREADSHEET_ID", "")
+    except Exception:
+        sid = os.environ.get("GOOGLE_SPREADSHEET_ID", "")
+    if not sid:
+        return
+    try:
+        token = _access_token()
+        row = [
+            datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            speaker_name,
+            event_name,
+            talk_title,
+            feedback_url,
+            "",  # QR Download Count — incremented separately
+        ]
+        requests.post(
+            f"https://sheets.googleapis.com/v4/spreadsheets/{sid}"
+            f"/values/QR%20Codes%20Generated!A:F:append",
+            params={"valueInputOption": "RAW", "insertDataOption": "INSERT_ROWS"},
+            json={"values": [row]},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+    except Exception:
+        pass  # non-blocking — don't surface errors to the speaker
+
+
 def save_feedback(data: dict) -> bool:
     import requests
     try:
@@ -249,6 +280,9 @@ if mode == "speaker":
             )
 
             qr_buf = make_qr(feedback_url)
+
+            # Log the QR generation to the sheet (non-blocking)
+            log_qr_generated(spk_name.strip(), spk_event.strip(), spk_talk.strip(), feedback_url)
 
             st.markdown('<div class="speaker-card">', unsafe_allow_html=True)
 
