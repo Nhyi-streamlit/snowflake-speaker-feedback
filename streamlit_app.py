@@ -176,11 +176,13 @@ def save_feedback(data: dict) -> bool:
             data.get("interested_areas", ""),
             data.get("respondent_name", ""),
             data.get("respondent_email", ""),
+            data.get("respondent_title", ""),
+            data.get("respondent_company", ""),
             data.get("other_feedback", ""),
         ]
         resp = requests.post(
             f"https://sheets.googleapis.com/v4/spreadsheets/{sid}"
-            f"/values/Talk%20Feedback!A:Q:append",
+            f"/values/Talk%20Feedback!A:S:append",
             params={"valueInputOption": "RAW", "insertDataOption": "INSERT_ROWS"},
             json={"values": [row]},
             headers={"Authorization": f"Bearer {token}"},
@@ -440,8 +442,10 @@ with st.form("feedback_form", clear_on_submit=False):
     oc1, oc2 = st.columns(2)
     with oc1:
         respondent_name = st.text_input("Your name", placeholder="Optional")
+        respondent_title = st.text_input("Job title", placeholder="Optional — e.g. Data Engineer")
     with oc2:
         respondent_email = st.text_input("Your email", placeholder="Optional — to receive community updates")
+        respondent_company = st.text_input("Company", placeholder="Optional — e.g. Acme Corp")
 
     other_feedback = st.text_area(
         "Any other feedback for the speaker or program?",
@@ -470,6 +474,8 @@ if submit:
         "interested_areas": ", ".join(interested_areas),
         "respondent_name":  respondent_name.strip(),
         "respondent_email": respondent_email.strip(),
+        "respondent_title": respondent_title.strip(),
+        "respondent_company": respondent_company.strip(),
         "other_feedback":   other_feedback.strip(),
     }
     with st.spinner("Submitting…"):
